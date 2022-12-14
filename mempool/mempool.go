@@ -44,7 +44,7 @@ func (m *Mempool) Start(rc *rpc.Client, ec *ethclient.Client) {
         log.Printf("Nonce: %v", tx.Nonce())
         log.Printf("Data: %v", tx.Data())
 
-        continue
+        break
     }
 
         log.Printf("%s\x1b[32m%s\x1b[0m%s", "---------- ", "Transaction Found", " ----------")
@@ -54,5 +54,7 @@ func (m *Mempool) Start(rc *rpc.Client, ec *ethclient.Client) {
         log.Printf("Gas Limit: %v", tx.Gas())
         log.Printf("Nonce: %v", tx.Nonce())
         log.Printf("Data: %v", tx.Data())
-    } 
+    }
+
+    return
 }
