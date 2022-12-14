@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 	"flexgo/mempool"
-    fga "flexgo/abi"
+    // fga "flexgo/abi"
 
     "github.com/ethereum/go-ethereum/rpc"
     "github.com/ethereum/go-ethereum/ethclient"
-    "github.com/ethereum/go-ethereum/accounts/abi/bind"
+    // "github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
 func main() {

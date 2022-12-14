@@ -37,22 +37,22 @@ func (m *Mempool) Start(rc *rpc.Client, ec *ethclient.Client) {
         if tx.To() == &h {
 
         log.Printf("%s\x1b[31m%s\x1b[0m%s", "---------- ", "EF Transaction Found", " ----------")
-        log.Printf("Hash: %s", h)
-        log.Printf("To: %s", tx.To())
-        log.Printf("Cost: %s", tx.Cost())
-        log.Printf("Gas Limit: %s", tx.Gas())
-        log.Printf("Nonce: %s", tx.Nonce())
-        log.Printf("Data: %s", tx.Data())
+        log.Printf("Hash: %v", h)
+        log.Printf("To: %v", tx.To())
+        log.Printf("Cost: %v", tx.Cost())
+        log.Printf("Gas Limit: %v", tx.Gas())
+        log.Printf("Nonce: %v", tx.Nonce())
+        log.Printf("Data: %v", tx.Data())
 
         continue
     }
 
         log.Printf("%s\x1b[32m%s\x1b[0m%s", "---------- ", "Transaction Found", " ----------")
-        log.Printf("Hash: %s", h)
-        log.Printf("To: %s", tx.To())
-        log.Printf("Cost: %s", tx.Cost())
-        log.Printf("Gas Limit: %s", tx.Gas())
-        log.Printf("Nonce: %s", tx.Nonce())
-        log.Printf("Data: %s", tx.Data())
+        log.Printf("Hash: %v", h)
+        log.Printf("To: %v", tx.To())
+        log.Printf("Cost: %v", tx.Cost())
+        log.Printf("Gas Limit: %v", tx.Gas())
+        log.Printf("Nonce: %v", tx.Nonce())
+        log.Printf("Data: %v", tx.Data())
     } 
 }
