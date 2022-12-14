@@ -11,8 +11,6 @@ import (
 )
 
 func main() {
-	log.Println("Starting mempool listener")
-
 	wg := &sync.WaitGroup{}
 	rc, err := rpc.Dial("ws://localhost:8546")
 	if err != nil {

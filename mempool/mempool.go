@@ -28,11 +28,11 @@ func (m *Mempool) Start(wg *sync.WaitGroup, rc *rpc.Client, ec *ethclient.Client
 	for h := range ch {
 		tx, p, err := ec.TransactionByHash(context.Background(), h)
 		if err != nil {
-			log.Printf("Failed to fetch tx (%s) by hash: %v", h, err.Error())
+			log.Printf("\x1b[31m%s%s%s\x1b[0m%s", "failed to fetch tx (", h,") by hash:", err.Error())
 		}
 
 		if p != true {
-			log.Printf("Transaaction hash %v is not pending", h)
+			log.Printf("\x1b[31m%s\x1b[0m%s\x1b[31m%s\x1b[0m", "transaction hash ", h, " is not pending")
 			continue
 		}
 

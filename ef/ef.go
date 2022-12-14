@@ -73,7 +73,7 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 			Data:      []byte("0x80ebb08e"),
 		})
 
-		log.Printf("Signing tx: %v", txn.Hash().String())
+		log.Printf("\x1b[32m%s\x1b[0m%s", "Signing tx: ", txn.Hash().String())
 
 		st, err := types.SignTx(txn, types.NewLondonSigner(cid), pk)
 		if err != nil {
@@ -87,10 +87,10 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 		if err != nil {
 			if errors.New("execution reverted: ExternallyFundedOSM/not-passed").Error() == err.Error() {
 				log.Printf(errors.New("EF: OSM not passed").Error())
-				return
+                continue
 			} else {
 				log.Printf("Failed to call UpdateResult: %v", err.Error())
-				return
+				continue
 			}
 		}
 	}
