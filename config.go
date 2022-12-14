@@ -1,27 +1,29 @@
 package main
 
 import (
-    "log"
-    "os"
+	"log"
+	"os"
 
-    "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 var (
-    PK  string
+	PK string
+	ME string
 )
 
 func getEnv(env string) string {
-    env, exists := os.LookupEnv(env)
-    if !exists {
-        log.Fatalf("Env var %v doesn't exist: ", env)
-    }
+	env, exists := os.LookupEnv(env)
+	if !exists {
+		log.Fatalf("Env var %v doesn't exist: ", env)
+	}
 
-    return env
+	return env
 }
 
 func init() {
-    godotenv.Load()
+	godotenv.Load()
 
-    PK = getEnv("PK")
+	PK = getEnv("PK")
+	ME = getEnv("ME")
 }
