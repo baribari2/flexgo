@@ -13,6 +13,10 @@ import (
 
 type Mempool struct{}
 
+func New() *Mempool {
+	return &Mempool{}
+}
+
 func (m *Mempool) Start(wg *sync.WaitGroup, rc *rpc.Client, ec *ethclient.Client) {
 	defer wg.Done()
 
@@ -21,20 +25,12 @@ func (m *Mempool) Start(wg *sync.WaitGroup, rc *rpc.Client, ec *ethclient.Client
 	ch := make(chan common.Hash)
 	_, err := gc.SubscribePendingTransactions(context.Background(), ch)
 	if err != nil {
-		log.Printf("Failed to sub to pending txs: %v", err.Error())
+		log.Printf("failed to sub to pending txs: %v", err.Error())
 		return
 	}
 
 	for h := range ch {
-		tx, p, err := ec.TransactionByHash(context.Background(), h)
-		if err != nil {
-			log.Printf("\x1b[31m%s%s%s\x1b[0m%s", "failed to fetch tx (", h,") by hash:", err.Error())
-		}
-
-		if p != true {
-			log.Printf("\x1b[31m%s\x1b[0m%s\x1b[31m%s\x1b[0m", "transaction hash ", h, " is not pending")
-			continue
-		}
+		tx, _, _ := ec.TransactionByHash(context.Background(), h)
 
 		h := common.HexToAddress("0xd4a0e3ec2a937e7cca4a192756a8439a8bf4ba91")
 		if tx.To() == &h {

@@ -3,11 +3,14 @@ package ef
 import (
 	"context"
 	"errors"
+	fga "flexgo/abi"
+	"flexgo/fsm"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 
-	geth "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,6 +18,10 @@ import (
 )
 
 type EF struct{}
+
+func New() *EF {
+	return &EF{}
+}
 
 func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA string) {
 	defer wg.Done()
@@ -25,19 +32,23 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 		to       = common.HexToAddress("0xD4A0E3EC2A937E7CCa4A192756a8439A8BF4bA91")
 		from     = senderA
 		gasLimit = uint64(100000)
+		fsm      = fsm.New()
 	)
+
 	cid, err := ec.ChainID(context.Background())
 	if err != nil {
-		log.Printf("Failed to get chain id: %v", err.Error())
+		log.Printf("failed to get chain id: %v", err.Error())
 		return
 	}
 
+	// Pending nonce for given account
 	n, err := ec.PendingNonceAt(context.Background(), common.HexToAddress(from))
 	if err != nil {
-		log.Printf("Failed to get nonce: %v", err.Error())
+		log.Printf("failed to get nonce: %v", err.Error())
 		return
 	}
 
+	// Gas variables
 	tc, _ := ec.SuggestGasTipCap(context.Background())
 	gc, _ := ec.SuggestGasPrice(context.Background())
 
@@ -48,20 +59,27 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 	// Subscribe to new heads from the client
 	_, err = ec.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
-		log.Printf("Failed to sub to new head: %v", err.Error())
+		log.Printf("failed to sub to new head: %v", err.Error())
 		return
 	}
 
-	// // PassedDelay tx
-	// passed, err := exf.PassedDelay(&bind.CallOpts{Context: context.Background()})
-	// if err != nil {
-	// 	log.Printf("Failed to call PassedDelay: %v", err.Error())
-	// 	return
-	// }
-
 	// On new head ...
-	for h := range ch {
-		log.Printf("\x1b[32m%s\x1b[0m%v", "New head: ", h)
+	for range ch {
+		// -------------------- ABI Encoding -------------------- //
+		a := fga.ExternallyFundedABI
+
+		babi, err := abi.JSON(strings.NewReader(a))
+		if err != nil {
+			log.Printf("failed to parse abi: %v", err.Error())
+			return
+		}
+
+		d, err := babi.Pack("updateResult")
+		if err != nil {
+			log.Printf("failed to pack data: %v", err.Error())
+			return
+		}
+		// -------------------- ABI Encoding -------------------- //
 
 		txn := types.NewTx(&types.DynamicFeeTx{
 			ChainID:   cid,
@@ -71,67 +89,88 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 			Gas:       gasLimit,
 			To:        &to,
 			Value:     big.NewInt(0),
-			Data:      []byte("0x80ebb08e"),
+			Data:      d,
 		})
 
-		log.Printf("\x1b[32m%s\x1b[0m%s", "Signing tx: ", txn.Hash().String())
-
-		if can := txn.Cost().IsInt64(); !can {
-			// TODO: Handle possible high gas price
-			log.Printf("\x1b[31m%s\x1b[0m", "Tx cost may be too high")
-			log.Printf("Tx cost: %v", txn.Cost().String())
-			log.Printf("Gas: %v", txn.Gas())
-			log.Printf("Gas price: %v", txn.GasPrice())
-		} else {
-			log.Printf("\x1b[33m%s\x1b[0m%v", "Tx cost:", txn.Cost().Int64()*(10/8))
-			log.Printf("\x1b[33m%s\x1b[0m%v", "Gas: ", (txn.Gas()))
-			log.Printf("\x1b[33m%s\x1b[0m%v", "Gas price: ", txn.GasPrice().Int64()*(10/8))
-		}
-
-		st, err := types.SignTx(txn, types.NewLondonSigner(cid), pk)
-		if err != nil {
-			log.Printf("Failed to sign tx: %v", err.Error())
-			return
-		}
-
-		res, err := ec.CallContract(
-			context.Background(), geth.CallMsg{
-				From:     common.HexToAddress(from),
-				To:       &to,
-				Gas:      gasLimit,
-				GasPrice: gc,
-				Value:    big.NewInt(0),
-				Data:     []byte("0x80ebb08e")}, nil)
-
-		if res != nil {
-			log.Printf("Result: %v", string(res))
-		}
-
-		// Parse error
+		passed, err := fsm.CheckDelay(ec)
 		if err != nil {
 			switch err.Error() {
-			case errors.New("execution reverted: ExternallyFundedOSM/not-passed").Error():
-				log.Printf(errors.New("EF: OSM not passed").Error())
-				continue
-			case errors.New("already known").Error():
-				log.Printf(errors.New("EF: Already known").Error())
-				continue
-			case errors.New("execution reverted").Error():
-				log.Printf(errors.New("EF: Execution reverted").Error())
+			case errors.New("FSM: delay not passed").Error():
+				log.Printf("\x1b[31m%s\x1b[0m", "Delay not passed")
 				continue
 			default:
-				c := "err: max fee per gas less than"
-				if len(err.Error()) > 30 && err.Error()[0:len(c)] == errors.New(c).Error() {
-					log.Printf(errors.New("EF: Max fee per gas less than block base fee").Error())
-					continue
-				}
-
-				log.Printf("Failed to send tx: %v", err.Error())
+				log.Printf("failed to check delay: %v", err.Error())
 				return
 			}
 		}
 
-		log.Printf("\x1b[32m%s\x1b[0m%s", "Sending tx: ", st.Hash().String())
-		err = ec.SendTransaction(context.Background(), st)
+		if passed {
+			log.Printf("\x1b[32m%s\x1b[0m", "Delay passed")
+			log.Printf("\x1b[32m%s\x1b[0m%s", "Signing tx: ", txn.Hash().String())
+
+			st, err := types.SignTx(txn, types.NewLondonSigner(cid), pk)
+			if err != nil {
+				log.Printf("failed to sign tx: %v", err.Error())
+				return
+			}
+
+			// TODO: Handle possible high gas price
+			if can := st.Cost().IsInt64(); !can {
+				log.Printf("\x1b[31m%s\x1b[0m", "Tx cost may be too high")
+				log.Printf("Tx cost: %v", st.Cost().String())
+				log.Printf("Gas: %v", st.Gas())
+				log.Printf("Gas price: %v", st.GasPrice())
+			} else {
+				log.Printf("\x1b[33m%s\x1b[0m%v", "Tx cost:", st.Cost().Int64()*(10/8))
+				log.Printf("\x1b[33m%s\x1b[0m%v", "Gas: ", (st.Gas()))
+				log.Printf("\x1b[33m%s\x1b[0m%v", "Gas price: ", st.GasPrice().Int64()*(10/8))
+			}
+
+			// res, err := ec.CallContract(
+			// 	context.Background(), geth.CallMsg{
+			// 		From:     common.HexToAddress(from),
+			// 		To:       &to,
+			// 		Gas:      gasLimit,
+			// 		GasPrice: gc,
+			// 		Value:    big.NewInt(0),
+			// 		Data:     []byte("0x80ebb08e")}, nil)
+
+			log.Printf("\x1b[32m%s\x1b[0m%s", "Sending tx: ", st.Hash().String())
+
+			err = ec.SendTransaction(context.Background(), st)
+
+			// Parse error
+			if err != nil {
+				switch err.Error() {
+				case errors.New("execution reverted: ExternallyFundedOSM/not-passed").Error():
+					log.Printf(errors.New("EF: OSM not passed").Error())
+					continue
+				case errors.New("already known").Error():
+					log.Printf(errors.New("EF: already known").Error())
+					continue
+				case errors.New("execution reverted").Error():
+					log.Printf(errors.New("EF: execution reverted").Error())
+					continue
+				default:
+					c := "err: max fee per gas less than"
+					if len(err.Error()) > 30 && err.Error()[0:len(c)] == errors.New(c).Error() {
+						log.Printf(errors.New("EF: max fee per gas less than block base fee").Error())
+						continue
+					}
+
+					log.Printf("failed to send tx: %v", err.Error())
+					return
+				}
+			}
+
+			// log.Printf("\x1b[32m%s\x1b[0m%s", "Sending tx: ", st.Hash().String())
+
+			// err = ec.SendTransaction(context.Background(), st)
+			// if err != nil {
+			// 	log.Printf("failed to send tx: %v", err.Error())
+			// 	return
+			// }
+			// }
+		}
 	}
 }
