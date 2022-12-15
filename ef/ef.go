@@ -17,10 +17,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-type EF struct{}
+type EF struct {
+	Sent bool
+}
 
 func New() *EF {
-	return &EF{}
+	return &EF{
+		Sent: false,
+	}
 }
 
 func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA string) {
@@ -31,7 +35,7 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 		pk       = crypto.ToECDSAUnsafe(common.FromHex(senderPK))
 		to       = common.HexToAddress("0xD4A0E3EC2A937E7CCa4A192756a8439A8BF4bA91")
 		from     = senderA
-		gasLimit = uint64(100000)
+		gasLimit = uint64(300000)
 		fsm      = fsm.New()
 	)
 
@@ -52,6 +56,9 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 	tc, _ := ec.SuggestGasTipCap(context.Background())
 	gc, _ := ec.SuggestGasPrice(context.Background())
 
+	tc = tc.Mul(tc, big.NewInt(10))
+	gc = gc.Mul(gc, big.NewInt(4))
+
 	// -------------------- Variables -------------------- //
 
 	ch := make(chan *types.Header)
@@ -64,7 +71,9 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 	}
 
 	// On new head ...
-	for range ch {
+	for h := range ch {
+		log.Printf("\x1b[33m%s\x1b[0m%v", "Block number ", h.Number.Int64())
+
 		// -------------------- ABI Encoding -------------------- //
 		a := fga.ExternallyFundedABI
 
@@ -136,31 +145,38 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 			// 		Data:     []byte("0x80ebb08e")}, nil)
 
 			log.Printf("\x1b[32m%s\x1b[0m%s", "Sending tx: ", st.Hash().String())
+			if e.Sent != true {
+				err = ec.SendTransaction(context.Background(), st)
 
-			err = ec.SendTransaction(context.Background(), st)
-
-			// Parse error
-			if err != nil {
-				switch err.Error() {
-				case errors.New("execution reverted: ExternallyFundedOSM/not-passed").Error():
-					log.Printf(errors.New("EF: OSM not passed").Error())
-					continue
-				case errors.New("already known").Error():
-					log.Printf(errors.New("EF: already known").Error())
-					continue
-				case errors.New("execution reverted").Error():
-					log.Printf(errors.New("EF: execution reverted").Error())
-					continue
-				default:
-					c := "err: max fee per gas less than"
-					if len(err.Error()) > 30 && err.Error()[0:len(c)] == errors.New(c).Error() {
-						log.Printf(errors.New("EF: max fee per gas less than block base fee").Error())
+				// Parse error
+				if err != nil {
+					switch err.Error() {
+					case errors.New("execution reverted: ExternallyFundedOSM/not-passed").Error():
+						log.Printf(errors.New("EF: OSM not passed").Error())
+						e.Sent = false
 						continue
-					}
+					case errors.New("already known").Error():
+						log.Printf(errors.New("EF: already known").Error())
+						e.Sent = false
+						continue
+					case errors.New("execution reverted").Error():
+						log.Printf(errors.New("EF: execution reverted").Error())
+						e.Sent = false
+						continue
+					default:
+						c := "err: max fee per gas less than"
+						e.Sent = false
+						if len(err.Error()) > 30 && err.Error()[0:len(c)] == errors.New(c).Error() {
+							log.Printf(errors.New("EF: max fee per gas less than block base fee").Error())
+							continue
+						}
 
-					log.Printf("failed to send tx: %v", err.Error())
-					return
+						log.Printf("failed to send tx: %v", err.Error())
+						return
+					}
 				}
+
+				e.Sent = false
 			}
 
 			// log.Printf("\x1b[32m%s\x1b[0m%s", "Sending tx: ", st.Hash().String())

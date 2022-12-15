@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flexgo/abi"
 	"log"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -31,13 +32,6 @@ func (f *FSMWatcher) CheckDelay(ec *ethclient.Client) (bool, error) {
 		return false, err
 	}
 
-	// FSM reimburse delay
-	rd, err := fsm.ReimburseDelay(nil)
-	if err != nil {
-		log.Printf("Failed to get reimburse delay: %v", err.Error())
-		return false, err
-	}
-
 	// Latest block
 	b, err := ec.BlockByNumber(context.Background(), nil)
 	if err != nil {
@@ -53,11 +47,8 @@ func (f *FSMWatcher) CheckDelay(ec *ethclient.Client) (bool, error) {
 		return false, errors.New("rt is not int64")
 	}
 
-	if can := rd.IsInt64(); !can {
-		return false, errors.New("rd is not int64")
-	}
-
-	if ok := int64(n)-rt.Int64() > rd.Int64(); !ok {
+	if ok := int64(n)-rt.Int64() >= int64(3600); !ok {
+		log.Printf("FSM Check: %v", strconv.FormatInt(int64(3600)-(int64(n)-rt.Int64()), 10)+" seconds until 1hr has passed")
 		return false, errors.New("FSM: delay not passed")
 	}
 

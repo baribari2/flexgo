@@ -30,7 +30,10 @@ func (m *Mempool) Start(wg *sync.WaitGroup, rc *rpc.Client, ec *ethclient.Client
 	}
 
 	for h := range ch {
-		tx, _, _ := ec.TransactionByHash(context.Background(), h)
+		tx, _, err := ec.TransactionByHash(context.Background(), h)
+		if err != nil {
+			continue
+		}
 
 		h := common.HexToAddress("0xd4a0e3ec2a937e7cca4a192756a8439a8bf4ba91")
 		if tx.To() == &h {

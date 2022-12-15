@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flexgo/ef"
+	"flexgo/fc"
 	"flexgo/mempool"
 	"log"
 	"sync"
@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 
-	c, err := ethclient.Dial("ws://localhost:8546")
+	c, err := ethclient.Dial("wss://mainnet.infura.io/ws/v3/f0e8a1d30f2f4b66bee88b508d52708f")
 	if err != nil {
 		log.Printf("failed to dial websocket: %s", err.Error())
 		return
@@ -30,9 +30,13 @@ func main() {
 	ml := mempool.New()
 	go ml.Start(wg, rc, c)
 
-	log.Println("Starting EF listener")
-	exf := ef.New()
-	go exf.Start(wg, c, PK, ME)
+	log.Println("Starting FC listener")
+	fc := fc.New()
+	go fc.Start(wg, c, PK, ME)
+
+	// log.Println("Starting EF listener")
+	// exf := ef.New()
+	// go exf.Start(wg, c, PK, ME)
 
 	wg.Wait()
 }

@@ -487,7 +487,7 @@ func (_ExternallyFunded *ExternallyFundedSession) UpdateDelay() (uint16, error) 
 // UpdateDelay is a free data retrieval call binding the contract method 0x554f94db.
 //
 // Solidity: function updateDelay() view returns(uint16)
-func (_ExternallyFunded *ExternallyFundedCallerSession) UpdateDelay() (uint16,error) {
+func (_ExternallyFunded *ExternallyFundedCallerSession) UpdateDelay() (uint16, error) {
 	return _ExternallyFunded.Contract.UpdateDelay(&_ExternallyFunded.CallOpts)
 }
 
