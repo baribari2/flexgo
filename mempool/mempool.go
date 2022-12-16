@@ -25,7 +25,7 @@ func (m *Mempool) Start(wg *sync.WaitGroup, rc *rpc.Client, ec *ethclient.Client
 	ch := make(chan common.Hash)
 	_, err := gc.SubscribePendingTransactions(context.Background(), ch)
 	if err != nil {
-		log.Printf("failed to sub to pending txs: %v", err.Error())
+        log.Printf("Mempool: failed to sub to pending txs: %v", err.Error())
 		return
 	}
 

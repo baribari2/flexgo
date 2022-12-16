@@ -41,14 +41,14 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 
 	cid, err := ec.ChainID(context.Background())
 	if err != nil {
-		log.Printf("failed to get chain id: %v", err.Error())
+		log.Printf("EF: failed to get chain id: %v", err.Error())
 		return
 	}
 
 	// Pending nonce for given account
 	n, err := ec.PendingNonceAt(context.Background(), common.HexToAddress(from))
 	if err != nil {
-		log.Printf("failed to get nonce: %v", err.Error())
+		log.Printf("EF: failed to get nonce: %v", err.Error())
 		return
 	}
 
@@ -56,7 +56,7 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 	tc, _ := ec.SuggestGasTipCap(context.Background())
 	gc, _ := ec.SuggestGasPrice(context.Background())
 
-	tc = tc.Mul(tc, big.NewInt(10))
+	tc = tc.Mul(tc, big.NewInt(115))
 	gc = gc.Mul(gc, big.NewInt(4))
 
 	// -------------------- Variables -------------------- //
@@ -66,26 +66,26 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 	// Subscribe to new heads from the client
 	_, err = ec.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
-		log.Printf("failed to sub to new head: %v", err.Error())
+		log.Printf("EF: failed to sub to new head: %v", err.Error())
 		return
 	}
 
 	// On new head ...
 	for h := range ch {
-		log.Printf("\x1b[33m%s\x1b[0m%v", "Block number ", h.Number.Int64())
+		log.Printf("\x1b[33m%s\x1b[32m%s\x1b[0m%v", "FC:", " Block number ", h.Number.Int64())
 
 		// -------------------- ABI Encoding -------------------- //
 		a := fga.ExternallyFundedABI
 
 		babi, err := abi.JSON(strings.NewReader(a))
 		if err != nil {
-			log.Printf("failed to parse abi: %v", err.Error())
+			log.Printf("EF: failed to parse abi: %v", err.Error())
 			return
 		}
 
 		d, err := babi.Pack("updateResult")
 		if err != nil {
-			log.Printf("failed to pack data: %v", err.Error())
+			log.Printf("EF: failed to pack data: %v", err.Error())
 			return
 		}
 		// -------------------- ABI Encoding -------------------- //
@@ -105,10 +105,10 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 		if err != nil {
 			switch err.Error() {
 			case errors.New("FSM: delay not passed").Error():
-				log.Printf("\x1b[31m%s\x1b[0m", "Delay not passed")
+				log.Printf("\x1b[31m%s\x1b[0m", "EF: Delay not passed")
 				continue
 			default:
-				log.Printf("failed to check delay: %v", err.Error())
+				log.Printf("EF: failed to check delay: %v", err.Error())
 				return
 			}
 		}
@@ -119,7 +119,7 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 
 			st, err := types.SignTx(txn, types.NewLondonSigner(cid), pk)
 			if err != nil {
-				log.Printf("failed to sign tx: %v", err.Error())
+				log.Printf("EF: failed to sign tx: %v", err.Error())
 				return
 			}
 
@@ -171,7 +171,7 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 							continue
 						}
 
-						log.Printf("failed to send tx: %v", err.Error())
+						log.Printf("EF: failed to send tx: %v", err.Error())
 						return
 					}
 				}

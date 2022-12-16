@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flexgo/ef"
 	"flexgo/fc"
 	"flexgo/mempool"
 	"log"
@@ -24,7 +25,7 @@ func main() {
 		return
 	}
 
-	wg.Add(2)
+	wg.Add(3)
 
 	log.Println("Starting mempool listener")
 	ml := mempool.New()
@@ -32,11 +33,11 @@ func main() {
 
 	log.Println("Starting FC listener")
 	fc := fc.New()
-	go fc.Start(wg, c, PK, ME)
+	go fc.Start(wg, c, PKMAIN, ADDMAIN)
 
-	// log.Println("Starting EF listener")
-	// exf := ef.New()
-	// go exf.Start(wg, c, PK, ME)
+	log.Println("Starting EF listener")
+	exf := ef.New()
+	go exf.Start(wg, c, PK2, ADD2)
 
 	wg.Wait()
 }
