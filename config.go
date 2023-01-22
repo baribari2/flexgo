@@ -12,6 +12,8 @@ var (
 	PK2     string
 	ADDMAIN string
 	ADD2    string
+	DTOKEN  string
+	CHANNEL string
 )
 
 func getEnv(env string) string {
@@ -30,4 +32,6 @@ func init() {
 	PK2 = getEnv("PK2")
 	ADDMAIN = getEnv("ADDMAIN")
 	ADD2 = getEnv("ADD2")
+	DTOKEN = getEnv("DTOKEN")
+	CHANNEL = getEnv("CHANNEL")
 }

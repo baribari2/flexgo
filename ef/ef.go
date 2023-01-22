@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	fga "flexgo/abi"
+	"flexgo/discord"
 	"flexgo/fsm"
 	"log"
 	"math/big"
@@ -27,7 +28,7 @@ func New() *EF {
 	}
 }
 
-func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA string) {
+func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, disc *discord.Discord, senderPK, senderA string) {
 	defer wg.Done()
 
 	// -------------------- Variables -------------------- //
@@ -52,6 +53,16 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 		return
 	}
 
+	tn, err := ec.NonceAt(context.Background(), common.HexToAddress(from), nil)
+	if err != nil {
+		log.Printf("EF: failed to get nonce: %v", err.Error())
+		return
+	}
+
+	if n == tn {
+		n += 1
+	}
+
 	// Gas variables
 	tc, _ := ec.SuggestGasTipCap(context.Background())
 	gc, _ := ec.SuggestGasPrice(context.Background())
@@ -72,7 +83,7 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 
 	// On new head ...
 	for h := range ch {
-		log.Printf("\x1b[33m%s\x1b[32m%s\x1b[0m%v", "FC:", " Block number ", h.Number.Int64())
+		log.Printf("\x1b[33m%s\x1b[32m%s\x1b[0m%v", "EF:", " Block number ", h.Number.Int64())
 
 		// -------------------- ABI Encoding -------------------- //
 		a := fga.ExternallyFundedABI
@@ -171,11 +182,12 @@ func (e *EF) Start(wg *sync.WaitGroup, ec *ethclient.Client, senderPK, senderA s
 							continue
 						}
 
-						log.Printf("EF: failed to send tx: %v", err.Error())
+						disc.Send("Failed to send transaction: https://etherscan.io/tx/" + st.Hash().String())
 						return
 					}
 				}
 
+				disc.Send("Sent transaction: https://etherscan.io/tx/" + st.Hash().String())
 				e.Sent = false
 			}
 

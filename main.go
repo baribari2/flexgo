@@ -1,10 +1,13 @@
 package main
 
 import (
+	"flexgo/discord"
 	"flexgo/ef"
 	"flexgo/fc"
 	"flexgo/mempool"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -19,13 +22,23 @@ func main() {
 		return
 	}
 
-	c, err := ethclient.Dial("wss://mainnet.infura.io/ws/v3/f0e8a1d30f2f4b66bee88b508d52708f")
+	c, err := ethclient.Dial("ws://localhost:8546")
 	if err != nil {
 		log.Printf("failed to dial websocket: %s", err.Error())
 		return
 	}
 
-	wg.Add(3)
+	d, err := discord.New(DTOKEN, CHANNEL)
+	if err != nil {
+		log.Printf("failed to create discord: %v", err.Error())
+		return
+	}
+
+	go func() {
+		http.ListenAndServe("127.0.0.1:6060", nil)
+	}()
+
+	wg.Add(4)
 
 	log.Println("Starting mempool listener")
 	ml := mempool.New()
@@ -33,11 +46,11 @@ func main() {
 
 	log.Println("Starting FC listener")
 	fc := fc.New()
-	go fc.Start(wg, c, PKMAIN, ADDMAIN)
+	go fc.Start(wg, c, PK2, ADD2)
 
 	log.Println("Starting EF listener")
 	exf := ef.New()
-	go exf.Start(wg, c, PK2, ADD2)
+	go exf.Start(wg, c, d, PKMAIN, ADDMAIN)
 
 	wg.Wait()
 }
